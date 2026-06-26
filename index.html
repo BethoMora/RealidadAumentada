@@ -3,233 +3,319 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>AR con Marcador Hiro</title>
+  <title>Dinosaurio AR – Marcador Hiro</title>
 
-  <!--
-    ┌─────────────────────────────────────────────────────────┐
-    │  1. LIBRERÍAS EXTERNAS                                  │
-    │  A-Frame: motor de escenas 3D/VR/AR para la web.       │
-    │  AR.js:   añade Realidad Aumentada a A-Frame usando    │
-    │           la cámara y marcadores fiduciarios.           │
-    └─────────────────────────────────────────────────────────┘
-  -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <!-- A-Frame 1.4.2 + AR.js estables y compatibles entre sí -->
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@v1.4.2/dist/aframe-master.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
 
   <style>
-    /* ── Estilos generales ── */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0a0a0f;
-      overflow: hidden; /* La cámara ocupa toda la pantalla */
+      background: #000;
+      overflow: hidden;
     }
 
-    /* ── HUD: panel de instrucciones flotante ── */
+    /* ── Panel instrucciones ── */
     #hud {
       position: fixed;
       top: 0; left: 0; right: 0;
       z-index: 999;
-      pointer-events: none; /* No bloquea la cámara */
+      pointer-events: none;
     }
-
-    #instrucciones {
-      margin: 12px auto;
-      max-width: 360px;
-      background: rgba(10, 10, 20, 0.78);
-      border: 1px solid rgba(120, 200, 255, 0.25);
+    #panel {
+      margin: 10px auto;
+      max-width: 340px;
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(100,220,100,0.35);
       border-radius: 14px;
-      padding: 12px 18px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      padding: 10px 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      pointer-events: all;
     }
+    .ico { font-size: 26px; flex-shrink: 0; }
+    .txt { color: #d4ffd4; font-size: 12.5px; line-height: 1.5; }
+    .txt strong { color: #7dff7d; display: block; font-size: 13.5px; margin-bottom: 2px; }
 
-    .hud-icon {
-      font-size: 28px;
-      flex-shrink: 0;
-    }
-
-    .hud-text {
-      color: #c8e8ff;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .hud-text strong {
-      color: #7dd3fc;
-      display: block;
-      font-size: 14px;
-      margin-bottom: 2px;
-    }
-
-    /* ── Botón para cerrar el HUD ── */
-    #btn-cerrar {
+    #btn-x {
       position: fixed;
-      top: 12px;
-      right: 14px;
+      top: 10px; right: 12px;
       z-index: 1000;
-      background: rgba(30, 30, 60, 0.85);
-      border: 1px solid rgba(120, 200, 255, 0.3);
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(100,220,100,0.4);
       border-radius: 50%;
-      color: #7dd3fc;
-      width: 34px;
-      height: 34px;
-      font-size: 18px;
+      color: #7dff7d;
+      width: 32px; height: 32px;
+      font-size: 17px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
     }
 
-    /* ── Badge "Marcador Hiro" abajo ── */
-    #badge-marcador {
+    #badge {
       position: fixed;
-      bottom: 20px;
-      left: 50%;
+      bottom: 16px; left: 50%;
       transform: translateX(-50%);
       z-index: 999;
       pointer-events: none;
-      background: rgba(10, 10, 20, 0.72);
-      border: 1px solid rgba(120, 200, 255, 0.2);
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(100,220,100,0.25);
       border-radius: 30px;
-      padding: 8px 20px;
-      color: #7dd3fc;
-      font-size: 12px;
-      letter-spacing: 0.06em;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      padding: 7px 18px;
+      color: #7dff7d;
+      font-size: 11.5px;
+      letter-spacing: 0.05em;
     }
 
-    /* ── Ocultar HUD cuando el usuario lo cierra ── */
     #hud.oculto { display: none; }
   </style>
 </head>
-
 <body>
 
-  <!-- ────────────────────────────────────────────────
-       2. HUD: instrucciones para el usuario
-  ──────────────────────────────────────────────────── -->
+  <!-- HUD -->
   <div id="hud">
-    <div id="instrucciones">
-      <span class="hud-icon">📷</span>
-      <div class="hud-text">
-        <strong>Realidad Aumentada · Marcador Hiro</strong>
-        Apunta tu cámara al marcador <em>Hiro</em> e imprime o muestra
-        en pantalla la imagen de abajo. ¡El astronauta aparecerá encima!
+    <div id="panel">
+      <span class="ico">🦕</span>
+      <div class="txt">
+        <strong>Dinosaurio AR · Marcador Hiro</strong>
+        Apunta la cámara al marcador <em>Hiro</em> y el dino verde aparecerá encima girando.
       </div>
     </div>
   </div>
+  <button id="btn-x" title="Cerrar">✕</button>
+  <div id="badge">🎯 Marcador: HIRO</div>
 
-  <!-- Botón X para cerrar el HUD -->
-  <button id="btn-cerrar" title="Cerrar instrucciones">✕</button>
-
-  <!-- Badge inferior -->
-  <div id="badge-marcador">🎯 Marcador: HIRO</div>
-
-
-  <!-- ────────────────────────────────────────────────
-       3. ESCENA A-FRAME CON AR.JS
-       
-       arjs="sourceType: webcam"   → usa la cámara del dispositivo
-       vr-mode-ui="enabled: false" → oculta el botón de VR (no lo necesitamos)
-       renderer="logarithmicDepthBuffer: true" → evita flickering en AR
-       embedded                    → la escena se incrusta en el body (no iframe)
-  ──────────────────────────────────────────────────── -->
+  <!--
+    ESCENA AR
+    - arjs: usa webcam, sin UI de debug
+    - vr-mode-ui desactivado (no necesitamos botón VR)
+    - renderer logarithmicDepthBuffer evita z-fighting / parpadeo
+    - embedded: la escena vive dentro del body normal
+  -->
   <a-scene
-    arjs="sourceType: webcam; debugUIEnabled: false;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
     vr-mode-ui="enabled: false"
     renderer="logarithmicDepthBuffer: true; antialias: true;"
     embedded
   >
 
     <!--
-      ┌─────────────────────────────────────────────────────────┐
-      │  4. ASSETS (recursos precargados)                       │
-      │  Precargamos el modelo glTF del astronauta de la NASA   │
-      │  que está disponible públicamente en el CDN de A-Frame. │
-      └─────────────────────────────────────────────────────────┘
+      MARCADOR HIRO
+      smooth/smoothCount/smoothTolerance: reduce el temblor del modelo
+      en dispositivos móviles.
     -->
-    <a-assets timeout="15000">
-      <!--
-        Modelo glTF del astronauta — asset oficial de A-Frame / Khronos Group.
-        URL pública y gratuita. El id "astronauta" lo usaremos luego.
-      -->
-      <a-asset-item
-        id="astronauta"
-        src="https://cdn.aframe.io/examples/ar/models/astronaut/Astronaut.glb"
-      ></a-asset-item>
-    </a-assets>
-
-
-    <!--
-      ┌─────────────────────────────────────────────────────────┐
-      │  5. CÁMARA AR                                           │
-      │  A-Frame con AR.js necesita una cámara con look-controls│
-      │  desactivados; AR.js la controla sola con el marcador.  │
-      └─────────────────────────────────────────────────────────┘
-    -->
-    <a-entity camera></a-entity>
-
-
-    <!--
-      ┌─────────────────────────────────────────────────────────┐
-      │  6. MARCADOR HIRO                                       │
-      │  <a-marker> detecta el marcador físico "hiro".         │
-      │  Todo lo que pongamos dentro solo aparece cuando        │
-      │  la cámara ve ese marcador.                             │
-      └─────────────────────────────────────────────────────────┘
-    -->
-    <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.01">
+    <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
 
       <!--
-        ┌───────────────────────────────────────────────────────┐
-        │  7. MODELO 3D: astronauta glTF                        │
-        │                                                       │
-        │  gltf-model="#astronauta" → referencia al <a-assets> │
-        │  position="0 0.5 0"      → eleva el modelo 0.5 m     │
-        │                            sobre el marcador          │
-        │  scale="0.5 0.5 0.5"    → tamaño moderado            │
-        │  animation:              → animación de rotación      │
-        │    - property: rotation  → qué propiedad animar       │
-        │    - to: "0 360 0"       → girar 360° en el eje Y     │
-        │    - dur: 5000           → una vuelta cada 5 segundos │
-        │    - easing: linear      → velocidad constante        │
-        │    - loop: true          → repite para siempre        │
-        └───────────────────────────────────────────────────────┘
+        DINOSAURIO construido con primitivas A-Frame (sin modelo externo).
+        Cada parte es una <a-entity> con geometría + material verde.
+        Todo el dino está dentro de un grupo padre que gira.
+
+        Paleta verde:
+          cuerpo/cabeza  #2d8c2d  (verde oscuro)
+          barriga        #5abf5a  (verde claro)
+          ojos           #fff
+          pupilas        #111
+          uñas           #1a5c1a
       -->
+
+      <!-- GRUPO PADRE: gira 360° cada 6 s -->
       <a-entity
-        gltf-model="#astronauta"
-        position="0 0.5 0"
-        scale="0.5 0.5 0.5"
-        animation="property: rotation; to: 0 360 0; dur: 5000; easing: linear; loop: true;"
-      ></a-entity>
+        id="dino"
+        position="0 0 0"
+        animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 6000; easing: linear; loop: true;"
+      >
 
-      <!--
-        Halo de luz ambiental suave bajo el astronauta
-        para que no flote "en seco" sobre el marcador.
-      -->
-      <a-entity
-        light="type: point; color: #7dd3fc; intensity: 1.2; distance: 1.5;"
-        position="0 0.2 0"
-      ></a-entity>
+        <!-- ── CUERPO (elipsoide aplanado) ── -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.28; segmentsWidth: 16; segmentsHeight: 12;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          scale="1 0.7 1.3"
+          position="0 0.28 0"
+        ></a-entity>
+
+        <!-- barriga más clara -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.18; segmentsWidth: 12; segmentsHeight: 10;"
+          material="color: #5abf5a; roughness: 0.9;"
+          scale="0.8 0.65 0.9"
+          position="0 0.25 0.12"
+        ></a-entity>
+
+        <!-- ── CUELLO ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.09; height: 0.22;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0 0.48 0.14"
+          rotation="-25 0 0"
+        ></a-entity>
+
+        <!-- ── CABEZA ── -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.14; segmentsWidth: 14; segmentsHeight: 10;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          scale="1.2 0.95 1.3"
+          position="0 0.64 0.24"
+        ></a-entity>
+
+        <!-- hocico -->
+        <a-entity
+          geometry="primitive: box; width: 0.18; height: 0.08; depth: 0.18;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0 0.60 0.37"
+          rotation="5 0 0"
+        ></a-entity>
+
+        <!-- fosa nasal izq -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.025;"
+          material="color: #1a5c1a;"
+          position="-0.045 0.625 0.47"
+        ></a-entity>
+        <!-- fosa nasal der -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.025;"
+          material="color: #1a5c1a;"
+          position="0.045 0.625 0.47"
+        ></a-entity>
+
+        <!-- ojo izquierdo blanco -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.045;"
+          material="color: #ffffff;"
+          position="-0.09 0.67 0.33"
+        ></a-entity>
+        <!-- pupila izquierda -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.022;"
+          material="color: #111111;"
+          position="-0.095 0.672 0.368"
+        ></a-entity>
+
+        <!-- ojo derecho blanco -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.045;"
+          material="color: #ffffff;"
+          position="0.09 0.67 0.33"
+        ></a-entity>
+        <!-- pupila derecha -->
+        <a-entity
+          geometry="primitive: sphere; radius: 0.022;"
+          material="color: #111111;"
+          position="0.095 0.672 0.368"
+        ></a-entity>
+
+        <!-- ── COLA ── -->
+        <a-entity
+          geometry="primitive: cone; radiusBottom: 0.12; radiusTop: 0.02; height: 0.45;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0 0.30 -0.32"
+          rotation="70 0 0"
+        ></a-entity>
+
+        <!-- ── PATA DELANTERA IZQ ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.055; height: 0.22;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="-0.21 0.16 0.06"
+          rotation="10 0 15"
+        ></a-entity>
+        <!-- pie del izq -->
+        <a-entity
+          geometry="primitive: box; width: 0.1; height: 0.05; depth: 0.14;"
+          material="color: #236e23; roughness: 0.8;"
+          position="-0.24 0.055 0.10"
+        ></a-entity>
+
+        <!-- ── PATA DELANTERA DER ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.055; height: 0.22;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0.21 0.16 0.06"
+          rotation="10 0 -15"
+        ></a-entity>
+        <!-- pie der -->
+        <a-entity
+          geometry="primitive: box; width: 0.1; height: 0.05; depth: 0.14;"
+          material="color: #236e23; roughness: 0.8;"
+          position="0.24 0.055 0.10"
+        ></a-entity>
+
+        <!-- ── PATA TRASERA IZQ ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.07; height: 0.28;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="-0.18 0.12 -0.15"
+          rotation="5 0 8"
+        ></a-entity>
+        <a-entity
+          geometry="primitive: box; width: 0.12; height: 0.05; depth: 0.16;"
+          material="color: #236e23; roughness: 0.8;"
+          position="-0.19 0.02 -0.10"
+        ></a-entity>
+
+        <!-- ── PATA TRASERA DER ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.07; height: 0.28;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0.18 0.12 -0.15"
+          rotation="5 0 -8"
+        ></a-entity>
+        <a-entity
+          geometry="primitive: box; width: 0.12; height: 0.05; depth: 0.16;"
+          material="color: #236e23; roughness: 0.8;"
+          position="0.19 0.02 -0.10"
+        ></a-entity>
+
+        <!-- ── BRAZO IZQUIERDO (pequeño, T-Rex style) ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.035; height: 0.14;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="-0.24 0.38 0.12"
+          rotation="40 0 60"
+        ></a-entity>
+
+        <!-- ── BRAZO DERECHO ── -->
+        <a-entity
+          geometry="primitive: cylinder; radius: 0.035; height: 0.14;"
+          material="color: #2d8c2d; roughness: 0.8;"
+          position="0.24 0.38 0.12"
+          rotation="40 0 -60"
+        ></a-entity>
+
+        <!-- ── PÚAS DORSALES ── -->
+        <a-entity geometry="primitive: cone; radiusBottom:0.035; radiusTop:0.004; height:0.12;"
+          material="color:#1a5c1a;" position="0 0.55 0.04" rotation="0 0 0"></a-entity>
+        <a-entity geometry="primitive: cone; radiusBottom:0.03; radiusTop:0.004; height:0.10;"
+          material="color:#1a5c1a;" position="0.04 0.53 -0.04" rotation="0 10 5"></a-entity>
+        <a-entity geometry="primitive: cone; radiusBottom:0.03; radiusTop:0.004; height:0.10;"
+          material="color:#1a5c1a;" position="-0.04 0.53 -0.04" rotation="0 -10 -5"></a-entity>
+        <a-entity geometry="primitive: cone; radiusBottom:0.025; radiusTop:0.003; height:0.09;"
+          material="color:#1a5c1a;" position="0 0.50 -0.12" rotation="8 0 0"></a-entity>
+        <a-entity geometry="primitive: cone; radiusBottom:0.02; radiusTop:0.003; height:0.07;"
+          material="color:#1a5c1a;" position="0 0.44 -0.22" rotation="15 0 0"></a-entity>
+
+        <!-- ── LUZ puntual verde suave ── -->
+        <a-entity
+          light="type: point; color: #88ff88; intensity: 0.8; distance: 1.2;"
+          position="0 0.8 0.3"
+        ></a-entity>
+
+      </a-entity>
+      <!-- fin grupo dino -->
 
     </a-marker>
 
+    <!-- Cámara controlada por AR.js -->
+    <a-entity camera></a-entity>
+
   </a-scene>
 
-
-  <!-- ────────────────────────────────────────────────
-       8. SCRIPT: cierre del HUD
-  ──────────────────────────────────────────────────── -->
   <script>
-    document.getElementById('btn-cerrar').addEventListener('click', function () {
+    document.getElementById('btn-x').addEventListener('click', function () {
       document.getElementById('hud').classList.add('oculto');
       this.style.display = 'none';
     });
